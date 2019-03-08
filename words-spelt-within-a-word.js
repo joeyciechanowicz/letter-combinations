@@ -64,32 +64,32 @@ function addWord(word, sortedWord) {
 	head.words.push(wordDetails);
 }
 
-function getCombinations(array, size, start, initialStuff, output) {
+function getCombinations(array, size, start, initialStuff, wordList, wordDetails) {
 	if (initialStuff.length >= size) {
-		output.push(initialStuff);
+		getWordsForCombination(wordDetails, initialStuff).forEach(x => wordList.push(x));
 	} else {
 		for (let i = start; i < array.length; ++i) {
-			getCombinations(array, size, i + 1, initialStuff.concat(array[i]), output);
+			getCombinations(array, size, i + 1, initialStuff.concat(array[i]), wordList, wordDetails);
 		}
 	}
 }
 
 /**
  *
- * @param checkAgainstCounts {string[]}
+ * @param checkAgainstCounts
  * @param wordToCheck
  * @returns {boolean}
  */
-function checkWordCanBeSpeltFrom(checkAgainstCounts, wordToCheck) {
-	for (let j = 0; j < wordToCheck.letterCounts.length; j++) {
-		if (!(wordToCheck.letterCounts[checkAgainstCounts[j][0]] <= checkAgainstCounts[j][1])) {
+function checkWordCanBeSpeltFrom(mainWord, wordToCheck, combination) {
+	for (let char in wordToCheck.letterCounts) {
+		if (wordToCheck.letterCounts[char] > mainWord.letterCounts[char]) {
 			return false;
 		}
 	}
 	return true;
 }
 
-function getWordsForCombination(checkAgainstCounts, combination) {
+function getWordsForCombination(mainWord, combination) {
 	let head = tri;
 	for (let j = 0; j < combination.length; j++) {
 		const letter = combination[j];
@@ -101,7 +101,7 @@ function getWordsForCombination(checkAgainstCounts, combination) {
 		head = head.children[letter];
 	}
 
-	return head.words.filter(word => checkWordCanBeSpeltFrom(checkAgainstCounts, word));
+	return head.words.filter(word => checkWordCanBeSpeltFrom(mainWord, word, combination) === true);
 }
 
 /**
@@ -110,17 +110,10 @@ function getWordsForCombination(checkAgainstCounts, combination) {
  * @returns {Array}
  */
 function findWords(wordDetails) {
-	const checkAgainstCounts = Object.entries(wordDetails.letterCounts);
 	let wordList = [];
 
-	const combinations = [];
 	for (let i = 1; i < wordDetails.sortedSet.length; i++) {
-		getCombinations(wordDetails.sortedSet, i, 0, [], combinations);
-	}
-
-	for (let i = 0; i < combinations.length; i++) {
-		const combination = combinations[i];
-		wordList = wordList.concat(getWordsForCombination(checkAgainstCounts, combination));
+		getCombinations(wordDetails.sortedSet, i, 0, [], wordList, wordDetails);
 	}
 
 	return wordList;
@@ -130,7 +123,7 @@ function findMostWords() {
 	let maxWord;
 	let maxWordsList = [];
 
-	const bar = new ProgressBar('[:bar] :rate/wps :percent :etas', {total: words.length});
+	const bar = new ProgressBar('[:bar] :rate/wps :percent', {total: words.length});
 
 	for (let i = 0; i < words.length; i++) {
 		bar.tick();
@@ -145,7 +138,8 @@ function findMostWords() {
 
 	console.log({
 		maxWord,
-		count: maxWordsList.length
+		count: maxWordsList.length,
+		words: maxWordsList.map(x => x.word).join(', ')
 	});
 }
 
@@ -153,6 +147,7 @@ let currentWord;
 let haveWord = false;
 const lineReader = readline.createInterface({
 	input: fs.createReadStream('words_with_sorted_word.txt')
+	// input: fs.createReadStream('smaller_words_with_sorted_word.txt')
 });
 
 console.time('Time to add');
