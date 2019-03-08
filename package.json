@@ -10,6 +10,7 @@
   "license": "Unlicense",
   "dependencies": {},
   "devDependencies": {
+    "js-combinatorics": "~0.5.4",
     "progress": "~2.0.3"
   }
 }
