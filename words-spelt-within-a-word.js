@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 const readline = require('readline')
 const fs = require('fs');
-
-const toDashedLayers = require('./lib/to-dashed-layers');
+const ProgressBar = require('progress');
 
 /*
  * This script calculates which word contains the most other words within it, allowing for some letters to be skipped
@@ -12,12 +11,41 @@ const toDashedLayers = require('./lib/to-dashed-layers');
 let count = 0;
 const words = new Array(370100);
 
-class WordPair {
-	constructor(word, sortedWord) {
-		this.word = word;
-		this.sortedWord = sortedWord;
+const wordsBasedOnStartingLetter = {
+	'a': [],
+	'b': [],
+	'c': [],
+	'd': [],
+	'e': [],
+	'f': [],
+	'g': [],
+	'h': [],
+	'i': [],
+	'j': [],
+	'k': [],
+	'l': [],
+	'm': [],
+	'n': [],
+	'o': [],
+	'p': [],
+	'q': [],
+	'r': [],
+	's': [],
+	't': [],
+	'u': [],
+	'v': [],
+	'w': [],
+	'x': [],
+	'y': [],
+	'z': [],
+};
 
-		this.letterCounts = sortedWord.split('').reduce((counts, curr) => {
+class WordPair {
+	constructor(word, sortedLetters) {
+		this.word = word;
+		this.sortedLetters = sortedLetters;
+
+		this.letterCounts = sortedLetters.reduce((counts, curr) => {
 			if (counts[curr]) {
 				counts[curr]++;
 			} else {
@@ -29,13 +57,15 @@ class WordPair {
 }
 
 function addWord(word, sortedWord) {
-	words[count] = new WordPair(word, sortedWord);
+	const sortedLetters = sortedWord.split('');
+	words[count] = new WordPair(word, sortedLetters);
+	wordsBasedOnStartingLetter[sortedLetters[0]].push(words[count]);
 	count++;
 }
 
-function checkWordCanBeSpeltFrom(mainWord, wordToCheck) {
-	for (let j = 0; j < mainWord.length; j++) {
-		if (!(wordToCheck.letterCounts[mainWord[j][0]] <= mainWord[j][1])) {
+function checkWordCanBeSpeltFrom(checkAgainstCounts, wordToCheck) {
+	for (let j = 0; j < checkAgainstCounts.length; j++) {
+		if (!(wordToCheck.letterCounts[checkAgainstCounts[j][0]] <= checkAgainstCounts[j][1])) {
 			return false;
 		}
 	}
@@ -46,10 +76,12 @@ function findWords(wordPair) {
 	const checkAgainstCounts = Object.entries(wordPair.letterCounts);
 	const wordList = [];
 
-	for (let i = 0; i < words.length; i++) {
-		const word = words[i];
-		if (checkWordCanBeSpeltFrom(checkAgainstCounts, word)) {
-			wordList.push(word.word);
+	for (let j = 0; j < checkAgainstCounts.length; j++) {
+		for (let i = 0; i < wordsBasedOnStartingLetter[checkAgainstCounts[j][0]].length; i++) {
+			const word = wordsBasedOnStartingLetter[checkAgainstCounts[j][0]][i];
+			if (checkWordCanBeSpeltFrom(checkAgainstCounts, word)) {
+				wordList.push(word.word);
+			}
 		}
 	}
 
@@ -59,17 +91,17 @@ function findWords(wordPair) {
 function findMostWords() {
 	let maxWord;
 	let maxWordsList = [];
+	const bar = new ProgressBar('[:bar] :rate/wps :percent :etas', {total: words.length});
 
 	for (let i = 0; i < words.length; i++) {
-		console.time(`Iteration ${i}`);
+		bar.tick();
+
 		const spellableWords = findWords(words[i])
 
 		if (spellableWords.length > maxWordsList.length) {
 			maxWord = words[i].word;
 			maxWordsList = spellableWords;
 		}
-
-		console.timeEnd(`Iteration ${i}`);
 	}
 
 	return {
