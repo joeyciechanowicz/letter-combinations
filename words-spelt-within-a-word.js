@@ -22,7 +22,6 @@ const tri = {
 class WordDetails {
 	constructor(word, sortedLetters) {
 		this.word = word;
-		this.sortedLetters = sortedLetters;
 
 		this.letterCounts = sortedLetters.reduce((counts, curr) => {
 			if (counts[curr]) {
@@ -61,6 +60,9 @@ function addWord(word, sortedWord) {
 		head = head.children[letter];
 	}
 
+	if (Object.keys(head.children).length > 0) {
+		wordDetails.canSkip = true;
+	}
 	head.words.push(wordDetails);
 }
 
@@ -76,11 +78,11 @@ function getCombinations(array, size, start, initialStuff, wordList, wordDetails
 
 /**
  *
- * @param checkAgainstCounts
+ * @param mainWord
  * @param wordToCheck
  * @returns {boolean}
  */
-function checkWordCanBeSpeltFrom(mainWord, wordToCheck, combination) {
+function checkWordCanBeSpeltFrom(mainWord, wordToCheck) {
 	for (let char in wordToCheck.letterCounts) {
 		if (wordToCheck.letterCounts[char] > mainWord.letterCounts[char]) {
 			return false;
@@ -101,7 +103,7 @@ function getWordsForCombination(mainWord, combination) {
 		head = head.children[letter];
 	}
 
-	return head.words.filter(word => checkWordCanBeSpeltFrom(mainWord, word, combination) === true);
+	return head.words.filter(word => checkWordCanBeSpeltFrom(mainWord, word) === true);
 }
 
 /**
@@ -128,7 +130,12 @@ function findMostWords() {
 	for (let i = 0; i < words.length; i++) {
 		bar.tick();
 
-		const spellableWords = findWords(words[i]);
+		const word = words[i];
+		if (word.canSkip) {
+			continue;
+		}
+
+		const spellableWords = findWords(word);
 
 		if (spellableWords.length > maxWordsList.length) {
 			maxWord = words[i].word;
@@ -146,14 +153,14 @@ function findMostWords() {
 let currentWord;
 let haveWord = false;
 const lineReader = readline.createInterface({
-	input: fs.createReadStream('words_with_sorted_word.txt')
+	input: fs.createReadStream('reversed_words_with_sorted_word.txt')
 	// input: fs.createReadStream('smaller_words_with_sorted_word.txt')
 });
 
 console.time('Time to add');
 lineReader.on('line', (word) => {
 	if (haveWord) {
-		addWord(currentWord, word);
+		addWord(word, currentWord);
 		haveWord = false;
 	} else {
 		currentWord = word;
