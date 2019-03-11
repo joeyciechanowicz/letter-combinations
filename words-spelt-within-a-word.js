@@ -2,7 +2,6 @@
 const readline = require('readline');
 const fs = require('fs');
 const ProgressBar = require('progress');
-const Combinatorics = require('js-combinatorics');
 
 
 /*
@@ -41,6 +40,112 @@ class WordDetails {
 	}
 }
 
+/**
+ *
+ * @param mainWord
+ * @param wordToCheck
+ * @returns {boolean}
+ */
+function checkWordCanBeSpeltFrom(mainWord, wordToCheck) {
+	for (let char in wordToCheck.letterCounts) {
+		// noinspection JSUnfilteredForInLoop
+		if (wordToCheck.letterCounts[char] > mainWord.letterCounts[char]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function addWordsForCombination(mainWord, combination, wordList) {
+	let head = tri;
+	for (let j = 0; j < combination.length; j++) {
+		const letter = combination[j];
+
+		if (!head.children[letter]) {
+			return [];
+		}
+
+		head = head.children[letter];
+	}
+
+	for (let i = 0; i < head.words.length; i++) {
+		if (checkWordCanBeSpeltFrom(mainWord, head.words[i])) {
+			wordList.push(head.words[i]);
+		}
+	}
+}
+
+
+function getCombinations(array, size, start, initialStuff, combinations) {
+	if (initialStuff.length >= size) {
+		combinations.push(initialStuff);
+	} else {
+		for (let i = start; i < array.length; ++i) {
+			getCombinations(array, size, i + 1, initialStuff.concat(array[i]), combinations);
+		}
+	}
+}
+
+function getAllCombinations(sortedSet) {
+	const combinations = [];
+	for (let i = 1; i < sortedSet.length; i++) {
+		getCombinations(sortedSet, i, 0, [], combinations);
+	}
+	return combinations;
+}
+
+/**
+ *
+ * @param {WordDetails} wordDetails
+ * @returns {Array}
+ */
+function findWords(wordDetails) {
+	let wordList = [];
+
+	const combinations = getAllCombinations(wordDetails.sortedSet);
+
+	for (let i = 0; i < combinations.length; i++) {
+		addWordsForCombination(wordDetails, combinations[i], wordList);
+	}
+
+	return wordList;
+}
+
+function findMostWords() {
+	let maxWord;
+	let maxWordsList = [];
+
+	const bar = new ProgressBar('[:bar] :rate/wps :percent', {total: words.length});
+
+	console.time('Time to find words');
+
+	let skipped = 0;
+
+	for (let i = 0; i < words.length; i++) {
+		bar.tick();
+
+		const word = words[i];
+		if (word.canSkip) {
+			skipped++;
+			continue;
+		}
+
+		const spellableWords = findWords(word);
+
+		if (spellableWords.length > maxWordsList.length) {
+			maxWord = words[i].word;
+			maxWordsList = spellableWords;
+		}
+	}
+
+	console.timeEnd('Time to find words');
+
+	console.log(`
+		Longest word: ${maxWord} with ${maxWordsList.length} words. (Skipped ${skipped})
+		${maxWordsList.map(x => x.word).join(', ')}
+	`);
+}
+
 function addWord(word, sortedWord) {
 	const sortedLetters = sortedWord.split('');
 	const wordDetails = new WordDetails(word, sortedLetters);
@@ -66,95 +171,11 @@ function addWord(word, sortedWord) {
 	head.words.push(wordDetails);
 }
 
-function getCombinations(array, size, start, initialStuff, wordList, wordDetails) {
-	if (initialStuff.length >= size) {
-		getWordsForCombination(wordDetails, initialStuff).forEach(x => wordList.push(x));
-	} else {
-		for (let i = start; i < array.length; ++i) {
-			getCombinations(array, size, i + 1, initialStuff.concat(array[i]), wordList, wordDetails);
-		}
-	}
-}
-
-/**
- *
- * @param mainWord
- * @param wordToCheck
- * @returns {boolean}
- */
-function checkWordCanBeSpeltFrom(mainWord, wordToCheck) {
-	for (let char in wordToCheck.letterCounts) {
-		if (wordToCheck.letterCounts[char] > mainWord.letterCounts[char]) {
-			return false;
-		}
-	}
-	return true;
-}
-
-function getWordsForCombination(mainWord, combination) {
-	let head = tri;
-	for (let j = 0; j < combination.length; j++) {
-		const letter = combination[j];
-
-		if (!head.children[letter]) {
-			return [];
-		}
-
-		head = head.children[letter];
-	}
-
-	return head.words.filter(word => checkWordCanBeSpeltFrom(mainWord, word) === true);
-}
-
-/**
- *
- * @param {WordDetails} wordDetails
- * @returns {Array}
- */
-function findWords(wordDetails) {
-	let wordList = [];
-
-	for (let i = 1; i < wordDetails.sortedSet.length; i++) {
-		getCombinations(wordDetails.sortedSet, i, 0, [], wordList, wordDetails);
-	}
-
-	return wordList;
-}
-
-function findMostWords() {
-	let maxWord;
-	let maxWordsList = [];
-
-	const bar = new ProgressBar('[:bar] :rate/wps :percent', {total: words.length});
-
-	for (let i = 0; i < words.length; i++) {
-		bar.tick();
-
-		const word = words[i];
-		if (word.canSkip) {
-			continue;
-		}
-
-		const spellableWords = findWords(word);
-
-		if (spellableWords.length > maxWordsList.length) {
-			maxWord = words[i].word;
-			maxWordsList = spellableWords;
-		}
-	}
-
-	console.log({
-		maxWord,
-		count: maxWordsList.length,
-		words: maxWordsList.map(x => x.word).join(', ')
-	});
-}
-
 let currentWord;
 let haveWord = false;
 const lineReader = readline.createInterface({
-	input: fs.createReadStream('reversed_words_with_sorted_word.txt')
-	// input: fs.createReadStream('smaller_words_with_sorted_word.txt')
+	// input: fs.createReadStream('reversed_words_with_sorted_word.txt')
+	input: fs.createReadStream('reversed_smaller_words_with_sorted_word.txt')
 });
 
 console.time('Time to add');
@@ -170,6 +191,7 @@ lineReader.on('line', (word) => {
 
 lineReader.on('close', function () {
 	console.timeEnd('Time to add');
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024 + ' mb');
 
-	setImmediate(findMostWords);
+	setTimeout(findMostWords, 0);
 });
