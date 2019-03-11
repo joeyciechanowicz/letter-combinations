@@ -1,7 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --experimental-worker
 const readline = require('readline');
 const fs = require('fs');
 const ProgressBar = require('progress');
+const os = require('os');
+const { Worker } = require('worker_threads');
 
 
 /*
@@ -19,8 +21,6 @@ const trie = {
 };
 
 let trieNodesCount = 0;
-let incorrectChecks = 0;
-let correctChecks = 0;
 
 class WordDetails {
 	constructor(word) {
@@ -46,92 +46,54 @@ class WordDetails {
 	}
 }
 
-/**
- *
- * @param mainWord
- * @param wordToCheck
- * @returns {boolean}
- */
-function isWordAnagram(mainWord, wordToCheck) {
-	if (wordToCheck.word.length > mainWord.word.length) {
-		return false;
-	}
-
-	for (let i = 0; i < wordToCheck.sortedSet.length; i++) {
-		const char = wordToCheck.sortedSet[i];
-		if (wordToCheck.letterCounts[char] > mainWord.letterCounts[char]) {
-			incorrectChecks++;
-			return false;
-		}
-	}
-
-	correctChecks++;
-	return true;
-}
-
-function searchSet(letters, start, head, currentWord, wordList) {
-	if (head.words.length > 0) {
-		for (let i = 0; i < head.words.length; i++) {
-			if (isWordAnagram(currentWord, head.words[i])) {
-				wordList.push(head.words[i]);
-			}
-		}
-	}
-
-	for (let i = start; i < letters.length; i++) {
-		if (head.children[letters[i]]) {
-			searchSet(letters, i + 1, head.children[letters[i]], currentWord, wordList);
-		}
-	}
-}
-
-/**
- *
- * @param {WordDetails} currentWord
- * @returns {Array}
- */
-function findAnagrams(currentWord) {
-	let wordList = [];
-
-	searchSet(currentWord.sortedSet, 0, trie, currentWord, wordList);
-
-	return wordList;
-}
-
-function findMostWords() {
+function run() {
 	let maxWord;
 	let maxWordsList = [];
+	let workersReceivedFrom = 0;
 
-	const bar = new ProgressBar('[:bar] :rate/wps :percent m=:average', {total: words.length});
+	const numCpus = os.cpus().length;
+	const chunkSize = Math.floor(words.length / numCpus);
 
-	console.time('Time to find words');
+	const bar = new ProgressBar('[:bar] :rate/wps :percent', {total: words.length});
 
-	let skipped = 0;
+	for (let i = 0; i < numCpus; i++) {
+		const start = i * chunkSize;
+		const end = i < numCpus - 1 ? (i + 1) * chunkSize : words.length;
+		const worker = new Worker('./anagram-worker.js', {workerData: {trie, words, start, end}});
+		worker.on('message', (data) => {
+			if (data.tick >= 0) {
+				bar.tick(data.tick, {});
+				return;
+			}
 
-	for (let i = 0; i < words.length; i++) {
-		bar.tick(1, {});
+			if (data.anagrams) {
+				workersReceivedFrom++;
+				if (data.anagrams.length > maxWordsList.length) {
+					maxWord = data.maxWord;
+					maxWordsList = data.anagrams;
+				}
 
-		const currentWord = words[i];
-		if (currentWord.canSkip) {
-			skipped++;
-			continue;
-		}
+				if (workersReceivedFrom === numCpus) {
+					console.log(`The word "${maxWord}" has ${maxWordsList.length} imperfect anagrams`);
+					if (maxWordsList.length > 100) {
+						console.log('Words have been written to anagrams.txt');
+						fs.writeFileSync('anagrams.txt', maxWordsList.join(', '));
+					} else {
+						console.log(maxWordsList.join(','));
+					}
+				}
 
-		const anagrams = findAnagrams(currentWord);
+				return;
+			}
 
-		if (anagrams.length > maxWordsList.length) {
-			maxWord = words[i].word;
-			maxWordsList = anagrams;
-		}
-	}
-
-	console.timeEnd('Time to find words');
-
-	console.log(`Longest word: ${maxWord} with ${maxWordsList.length} words. Incorrect checks: ${incorrectChecks}. Correct checks: ${correctChecks}`);
-
-	if (maxWordsList.length > 100) {
-		console.log('Words have been written to anagrams.txt');
-		fs.writeFileSync('anagrams.txt', maxWordsList.map(x => x.word).join(', '));
+			console.error(`Unhandled message from worker`, data);
+		});
+		worker.on('error', error => console.error(`Error from worker ${i}`, error));
+		worker.on('exit', code => {
+			if (code !== 0) {
+				console.error(`Worker ${i} exited with code ${code}`);
+			}
+		})
 	}
 }
 
@@ -161,9 +123,9 @@ function addWord(word) {
 }
 
 const lineReader = readline.createInterface({
-	input: fs.createReadStream('2000_random_words_alpha.txt')
+	// input: fs.createReadStream('2000_random_words_alpha.txt')
 	// input: fs.createReadStream('first_2000_words.txt')
-	// input: fs.createReadStream('words_alpha.txt')
+	input: fs.createReadStream('words_alpha.txt')
 });
 
 console.time('Time to add');
@@ -174,6 +136,5 @@ lineReader.on('line', (word) => {
 lineReader.on('close', function () {
 	console.timeEnd('Time to add');
 	console.log(`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)} mb. ${trieNodesCount.toLocaleString()} nodes in trie`);
-
-	setImmediate(findMostWords);
+	run();
 });
