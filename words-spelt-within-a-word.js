@@ -56,7 +56,7 @@ function checkWordCanBeSpeltFrom(mainWord, wordToCheck) {
 	return true;
 }
 
-function addWordsForCombination(mainWord, combination, wordList) {
+function findSpellableWordsForCombination(mainWord, combination, wordList) {
 	let head = tri;
 	for (let j = 0; j < combination.length; j++) {
 		const letter = combination[j];
@@ -105,7 +105,7 @@ function findWords(wordDetails) {
 	const combinations = getAllCombinations(wordDetails.sortedSet);
 
 	for (let i = 0; i < combinations.length; i++) {
-		addWordsForCombination(wordDetails, combinations[i], wordList);
+		findSpellableWordsForCombination(wordDetails, combinations[i], wordList);
 	}
 
 	return wordList;
@@ -174,8 +174,8 @@ function addWord(word, sortedWord) {
 let currentWord;
 let haveWord = false;
 const lineReader = readline.createInterface({
-	// input: fs.createReadStream('reversed_words_with_sorted_word.txt')
-	input: fs.createReadStream('reversed_smaller_words_with_sorted_word.txt')
+	input: fs.createReadStream('reversed_words_with_sorted_word.txt')
+	// input: fs.createReadStream('reversed_smaller_words_with_sorted_word.txt')
 });
 
 console.time('Time to add');
@@ -193,5 +193,5 @@ lineReader.on('close', function () {
 	console.timeEnd('Time to add');
 	console.log(process.memoryUsage().heapUsed / 1024 / 1024 + ' mb');
 
-	setTimeout(findMostWords, 0);
+	setImmediate(findMostWords);
 });
