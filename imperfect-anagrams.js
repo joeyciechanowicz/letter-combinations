@@ -14,10 +14,8 @@ const { Worker } = require('worker_threads');
 const words = [];
 
 const trie = {
-	pathTotal: 0,
 	children: {},
-	words: [],
-	currentPath: ''
+	words: []
 };
 
 let trieNodesCount = 0;
@@ -47,18 +45,22 @@ class WordDetails {
 }
 
 function run() {
+	console.time('Worker Spawning');
+
 	let maxWord;
 	let maxWordsList = [];
 	let workersReceivedFrom = 0;
 
 	const numCpus = os.cpus().length;
 	const chunkSize = Math.floor(words.length / numCpus);
+	const reportFrequency =  Math.floor(chunkSize / 100);
 
 	const bar = new ProgressBar('[:bar] :rate/wps :percent', {total: words.length});
 
 	for (let i = 0; i < numCpus; i++) {
 		const start = i * chunkSize;
 		const end = i < numCpus - 1 ? (i + 1) * chunkSize : words.length;
+
 		const worker = new Worker('./anagram-worker.js', {workerData: {trie, words, start, end}});
 		worker.on('message', (data) => {
 			if (data.tick >= 0) {
@@ -93,7 +95,16 @@ function run() {
 			if (code !== 0) {
 				console.error(`Worker ${i} exited with code ${code}`);
 			}
-		})
+		});
+
+		let onlineCount = 0;
+		worker.on('online', () => {
+			onlineCount++;
+
+			if (onlineCount === numCpus) {
+				console.timeEnd('Worker Spawning');
+			}
+		});
 	}
 }
 
@@ -119,13 +130,14 @@ function addWord(word) {
 	if (Object.keys(head.children).length > 0) {
 		wordDetails.canSkip = true;
 	}
+
 	head.words.push(wordDetails);
 }
 
 const lineReader = readline.createInterface({
 	// input: fs.createReadStream('2000_random_words_alpha.txt')
-	// input: fs.createReadStream('first_2000_words.txt')
-	input: fs.createReadStream('words_alpha.txt')
+	input: fs.createReadStream('first_2000_words.txt')
+	// input: fs.createReadStream('words_alpha.txt')
 });
 
 console.time('Time to add');
