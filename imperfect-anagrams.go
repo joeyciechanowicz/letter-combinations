@@ -95,42 +95,25 @@ func searchSet(letters []string, start int, head *Node, currentWord *WordDetails
 		}
 	}
 }
-//
-//type wordAnagramsPair struct {
-//	word string
-//	anagrams []WordDetails
-//}
-//
-//func findMostAnagramsForSlice(ticks chan<- int, ) {
-//
-//}
 
-func findMostAnagrams() (string, []WordDetails) {
-	start := time.Now()
-	defer timeTrack(start, "Search for anagram")
+type wordAnagramsPair struct {
+	word     string
+	anagrams []WordDetails
+}
+
+func findMostAnagramsForSlice(ticks chan<- int, anagrams chan<- wordAnagramsPair, wordSlice []WordDetails) {
 	var maxWord string
 	var maxAnagrams []WordDetails
 
-	total := float64(len(words))
+	pingFrequency := len(wordSlice) / 100
 
-	fmt.Println()
-
-	for i, currentWord := range words {
+	for i, currentWord := range wordSlice {
 		if currentWord.canSkip {
 			continue
 		}
 
-		if i % 1000 == 0 {
-			curr := float64(i)
-
-			ratio := math.Min(math.Max(curr/total, 0), 1)
-			percent := int32(math.Floor(ratio * 100))
-			//incomplete, complete, completeLength;
-			elapsed := float64(time.Since(start).Seconds())
-			eta := elapsed * (total / curr - 1)
-			rate := curr / elapsed
-
-			fmt.Printf("\r %d%% %d/wps %f seconds", percent, int32(rate), eta)
+		if i % pingFrequency == 0 {
+			ticks <- pingFrequency
 		}
 
 		var anagrams WordDetailsSlice
@@ -145,7 +128,83 @@ func findMostAnagrams() (string, []WordDetails) {
 		}
 	}
 
-	return maxWord, maxAnagrams
+	if len(words) % pingFrequency != 0 {
+		ticks <- len(words) % pingFrequency
+	}
+	anagrams <- wordAnagramsPair{maxWord, maxAnagrams}
+}
+
+func printProgress(ticks <-chan int) {
+	start := time.Now()
+	totalTicks := 0
+	total := float64(len(words))
+
+	for {
+		amount := <-ticks
+		if amount == -1 {
+			return
+		}
+
+		totalTicks += amount
+		curr := float64(totalTicks)
+
+		ratio := math.Min(math.Max(curr/total, 0), 1)
+		percent := int32(math.Floor(ratio * 100))
+		elapsed := float64(time.Since(start).Seconds())
+		eta := elapsed * (total/curr - 1)
+		rate := curr / elapsed
+
+		fmt.Printf("\r%d%% %d/wps %f seconds    ", percent, int32(rate), eta)
+		//default:
+		//	time.Sleep(100 * time.Millisecond)
+		//}
+	}
+}
+
+func findMostAnagrams() (string, []WordDetails) {
+	const numCpus = 4
+	chunkSize := len(words) / numCpus
+
+	ticks := make(chan int, 50)
+	defer close(ticks)
+	anagrams := make(chan wordAnagramsPair)
+	defer close(anagrams)
+
+	go printProgress(ticks)
+
+	for i := 0; i < numCpus; i++ {
+		start := i * chunkSize
+		end := (i + 1) * chunkSize
+		if i == numCpus-1 {
+			end = len(words)
+		}
+
+		wordSlice := words[start:end]
+
+		go findMostAnagramsForSlice(ticks, anagrams, wordSlice)
+	}
+
+	fmt.Println()
+	receivedCount := 0
+	var maxAnagramsPair wordAnagramsPair
+
+	for {
+		select {
+		case pair := <-anagrams:
+			if len(pair.anagrams) > len(maxAnagramsPair.anagrams) {
+				maxAnagramsPair = pair
+			}
+			receivedCount++
+
+			if receivedCount == numCpus {
+				ticks <- -1
+				return maxAnagramsPair.word, maxAnagramsPair.anagrams
+			}
+
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }
 
 func buildTrie(filename string) {
@@ -200,7 +259,7 @@ func main() {
 	//buildTrie("./first_2000_words.txt")
 	word, anagrams := findMostAnagrams()
 
-	fmt.Println("Longest word: ", word, " with ", len(anagrams), " anagrams")
+	fmt.Printf("\rLongest word: %s with %d anagrams    ", word, len(anagrams))
 }
 
 func Close(c io.Closer) {
