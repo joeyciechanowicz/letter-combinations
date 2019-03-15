@@ -13,6 +13,10 @@ import (
 const filename = "./words_alpha.txt"
 
 func shouldWordBeIncluded(word string, mainLetter string, letterCounts map[string]int) bool {
+	if len(word) < 3 {
+		return false
+	}
+
 	lettersSeen := make(map[string]int)
 
 	for _, letter := range strings.Split(word, "") {
@@ -49,6 +53,11 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 
 	for letter, count := range letterCounts {
 		if letter == mainLetter {
+			if count > 1 {
+				for i := 0; i < count - 1; i++ {
+					letters = append(letters, letter)
+				}
+			}
 			continue
 		}
 
@@ -64,6 +73,24 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 	fmt.Printf("┃   ┗━━━┛   ┃\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[5], letters[6], letters[7])
 	fmt.Printf("┗━━━━━━━━━━━┛\n")
+
+	fmt.Printf("9 letter words: ")
+	nineLetterCount := 0
+	for _, word := range words {
+		if len(word) == 0 {
+			if nineLetterCount > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Print(word)
+			nineLetterCount++
+		}
+	}
+
+	if nineLetterCount == 0 {
+		fmt.Println("No nine letter words for this wheel")
+	} else {
+		fmt.Println()
+	}
 
 	for i, word := range words {
 		fmt.Print(word)
