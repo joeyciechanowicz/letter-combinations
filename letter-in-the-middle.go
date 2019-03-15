@@ -21,16 +21,13 @@ func shouldWordBeIncluded(word string, mainLetter string, letterCounts map[strin
 
 	for _, letter := range strings.Split(word, "") {
 		lettersSeen[letter] += 1
-		if lettersSeen[letter] > 1 {
-			return false
-		}
 
 		if lettersSeen[letter] > letterCounts[letter] {
 			return false
 		}
 	}
 
-	return lettersSeen[mainLetter] == 1
+	return lettersSeen[mainLetter] >= 1
 }
 
 func parseArgs() (string, map[string]int) {
@@ -74,22 +71,34 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[5], letters[6], letters[7])
 	fmt.Printf("┗━━━━━━━━━━━┛\n")
 
-	fmt.Printf("9 letter words: ")
+	nineLetterString := "Nine letter words: "
 	nineLetterCount := 0
 	for _, word := range words {
-		if len(word) == 0 {
+		if len(word) == 9 {
 			if nineLetterCount > 0 {
-				fmt.Print(", ")
+				nineLetterString += ", "
 			}
-			fmt.Print(word)
+			nineLetterString += word
 			nineLetterCount++
 		}
 	}
+	if nineLetterCount > 0 {
+		fmt.Println(nineLetterString)
+	}
 
-	if nineLetterCount == 0 {
-		fmt.Println("No nine letter words for this wheel")
-	} else {
-		fmt.Println()
+	eightLetterString := "Eight letter words: "
+	eightLetterCount := 0
+	for _, word := range words {
+		if len(word) == 8 {
+			if eightLetterCount > 0 {
+				eightLetterString += ", "
+			}
+			eightLetterString += word
+			eightLetterCount++
+		}
+	}
+	if eightLetterCount > 0 {
+		fmt.Println(eightLetterString)
 	}
 
 	for i, word := range words {
