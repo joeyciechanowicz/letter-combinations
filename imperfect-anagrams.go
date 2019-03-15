@@ -216,7 +216,7 @@ func buildTrie(filename string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer Close(fileHandle)
+	defer closeIO(fileHandle)
 
 	scanner := bufio.NewScanner(fileHandle)
 	for scanner.Scan() {
@@ -262,7 +262,7 @@ func main() {
 	fmt.Printf("\rLongest word: %s with %d anagrams    ", word, len(anagrams))
 }
 
-func Close(c io.Closer) {
+func closeIO(c io.Closer) {
 	err := c.Close()
 	if err != nil {
 		log.Fatal(err)
