@@ -66,12 +66,12 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 	fmt.Printf("┏━━━━━━━━━━━┓\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[0], letters[1], letters[2])
 	fmt.Printf("┃   ┏━━━┓   ┃\n")
-	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d words in %dms\n", letters[3], mainLetter, letters[4], len(words), time.Nanoseconds() / 1e6)
+	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d reader in %dms\n", letters[3], mainLetter, letters[4], len(words), time.Nanoseconds() / 1e6)
 	fmt.Printf("┃   ┗━━━┛   ┃\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[5], letters[6], letters[7])
 	fmt.Printf("┗━━━━━━━━━━━┛\n")
 
-	nineLetterString := "Nine letter words: "
+	nineLetterString := "Nine letter reader: "
 	nineLetterCount := 0
 	for _, word := range words {
 		if len(word) == 9 {
@@ -86,7 +86,7 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 		fmt.Println(nineLetterString)
 	}
 
-	eightLetterString := "Eight letter words: "
+	eightLetterString := "Eight letter reader: "
 	eightLetterCount := 0
 	for _, word := range words {
 		if len(word) == 8 {
