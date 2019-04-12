@@ -63,3 +63,4 @@ v8-logs/
 anagrams.txt
 letter-combinations
 src/github.com
+*.prof

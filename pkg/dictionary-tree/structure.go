@@ -5,10 +5,14 @@ import (
 	"sort"
 )
 
+type RuneCount struct {
+	Letter rune
+	Count byte
+}
+
 type WordDetails struct {
-	Word         string
-	SortedSet    []rune
-	LetterCounts map[rune]byte
+	Word             string
+	SortedRuneCounts []RuneCount
 }
 
 type WordDetailsSlice []WordDetails
@@ -27,21 +31,29 @@ func (p runeSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func newWordDetails(word string) WordDetails {
 	var details = WordDetails{
 		word,
-		[]rune{},
-		make(map[rune]byte),
+		[]RuneCount{},
 	}
+
+	// store an array of {rune, count} which replaces the SortedSet and LetterCounts
+	// to check now, will need to iterate the slice on one word and allow skipping on the other
 
 	sortedLetters := []rune(word)
 	sort.Sort(runeSlice(sortedLetters))
 
-	details.SortedSet = append(details.SortedSet, sortedLetters[0])
+	letterCounts := make(map[rune]byte)
+
+	details.SortedRuneCounts = append(details.SortedRuneCounts, RuneCount{sortedLetters[0], 0})
 
 	for _, char := range sortedLetters {
-		details.LetterCounts[char] += 1
+		letterCounts[char] += 1
 
-		if details.SortedSet[len(details.SortedSet)-1] != char {
-			details.SortedSet = append(details.SortedSet, char)
+		if details.SortedRuneCounts[len(details.SortedRuneCounts)-1].Letter != char {
+			details.SortedRuneCounts = append(details.SortedRuneCounts, RuneCount{char, 0})
 		}
+	}
+
+	for i, runeCount := range details.SortedRuneCounts {
+		details.SortedRuneCounts[i].Count = letterCounts[runeCount.Letter]
 	}
 
 	return details
@@ -64,17 +76,17 @@ func CreateDictionaryTree(filename string) (Node, []WordDetails){
 		var head *Node
 		head = &trie
 
-		for _, letter := range details.SortedSet {
-			if _, ok := head.Children[letter]; !ok {
+		for _, runeCount := range details.SortedRuneCounts {
+			if _, ok := head.Children[runeCount.Letter]; !ok {
 				nodeCount++
 
-				head.Children[letter] = &Node{
+				head.Children[runeCount.Letter] = &Node{
 					make(map[rune]*Node),
 					[]*WordDetails{},
 				}
 			}
 
-			head = head.Children[letter]
+			head = head.Children[runeCount.Letter]
 		}
 
 		words = append(words, details)

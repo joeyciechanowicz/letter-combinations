@@ -1,8 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"math"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/joeyciechanowicz/letter-combinations/pkg/dictionary-tree"
@@ -13,32 +18,44 @@ type wordAnagramsPair struct {
 	anagramsCount int
 }
 
-func isWordAnagram(mainWord *dictionary_tree.WordDetails, wordToCheck *dictionary_tree.WordDetails) bool {
-	if len(wordToCheck.Word) > len(mainWord.Word) {
+func isWord1AnagramOfWord2(word1 *dictionary_tree.WordDetails, word2 *dictionary_tree.WordDetails) bool {
+	if len(word1.Word) > len(word2.Word) {
 		return false
 	}
 
-	for _, char := range wordToCheck.SortedSet {
-		if wordToCheck.LetterCounts[char] > mainWord.LetterCounts[char] {
-			return false
+	i := -1
+	for _, runeAndCount := range word1.SortedRuneCounts {
+		for {
+			i++
+			if i == len(word2.SortedRuneCounts) {
+				return false
+			}
+
+			if runeAndCount.Letter == word2.SortedRuneCounts[i].Letter {
+				if runeAndCount.Count <= word2.SortedRuneCounts[i].Count {
+					break
+				} else {
+					return false
+				}
+			}
 		}
 	}
 
 	return true
 }
 
-func searchSet(letters []rune, start int, head *dictionary_tree.Node, currentWord *dictionary_tree.WordDetails, anagramsCount *int) {
+func searchSet(letters []dictionary_tree.RuneCount, start int, head *dictionary_tree.Node, currentWord *dictionary_tree.WordDetails, anagramsCount *int) {
 	if len(head.Words) > 0 {
 		for i := 0; i < len(head.Words); i++ {
-			if isWordAnagram(currentWord, head.Words[i]) {
+			if isWord1AnagramOfWord2(head.Words[i], currentWord) {
 				*anagramsCount += 1
 			}
 		}
 	}
 
 	for i := start; i < len(letters); i++ {
-		if _, ok := head.Children[letters[i]]; ok {
-			searchSet(letters, i+1, head.Children[letters[i]], currentWord, anagramsCount)
+		if _, ok := head.Children[letters[i].Letter]; ok {
+			searchSet(letters, i+1, head.Children[letters[i].Letter], currentWord, anagramsCount)
 		}
 	}
 }
@@ -51,7 +68,7 @@ func findAnagrams(trie dictionary_tree.Node, wordChan <-chan dictionary_tree.Wor
 		}
 
 		anagramsCount := 0
-		searchSet(currentWord.SortedSet, 0, &trie, &currentWord, &anagramsCount)
+		searchSet(currentWord.SortedRuneCounts, 0, &trie, &currentWord, &anagramsCount)
 		pair := wordAnagramsPair{currentWord.Word, anagramsCount}
 
 		anagramsForWord <- pair
@@ -120,9 +137,40 @@ func findWordWithMostAnagrams(trie dictionary_tree.Node, words []dictionary_tree
 	close(anagramsForWord)
 }
 
+//var cpuprofile = "cpu.prof"
+var cpuprofile = ""
+
+//var memprofile = "mem.prof"
+var memprofile = ""
+
 func main() {
 	var trie, words = dictionary_tree.CreateDictionaryTree("./words_alpha.txt")
 	//var trie, words = dictionary_tree.CreateDictionaryTree("./first_2000_words.txt")
 
+	flag.Parse()
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	findWordWithMostAnagrams(trie, words)
+
+	if memprofile != "" {
+		f, err := os.Create(memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		defer f.Close()
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+	}
 }
