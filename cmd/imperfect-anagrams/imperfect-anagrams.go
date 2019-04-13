@@ -112,7 +112,7 @@ func trackMostAnagrams(finished chan<- bool, numWords int, anagramsForWord <-cha
 }
 
 func findWordWithMostAnagrams(trie dictionary_tree.Node, words []dictionary_tree.WordDetails) {
-	const numCpus = 4
+	const numCpus = 8
 
 	finished := make(chan bool)
 	anagramsForWord := make(chan wordAnagramsPair, numCpus)
