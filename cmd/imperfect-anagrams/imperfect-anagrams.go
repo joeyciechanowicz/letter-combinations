@@ -24,7 +24,8 @@ func isWord1AnagramOfWord2(word1 *dictionary_tree.WordDetails, word2 *dictionary
 	}
 
 	i := -1
-	for _, runeAndCount := range word1.SortedRuneCounts {
+	for j := 0; j < len(word1.SortedRuneCounts); j++ {
+		runeAndCount := word1.SortedRuneCounts[j]
 		for {
 			i++
 			if i == len(word2.SortedRuneCounts) {
