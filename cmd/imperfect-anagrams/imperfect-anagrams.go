@@ -23,9 +23,13 @@ func isWord1AnagramOfWord2(word1 *dictionary_tree.WordDetails, word2 *dictionary
 		return false
 	}
 
+	// Iterate the main words runes, setting an index for the other word
 	i := -1
 	for j := 0; j < len(word1.SortedRuneCounts); j++ {
 		runeAndCount := word1.SortedRuneCounts[j]
+
+		// move the other words index along until we find a letter that matches
+		// returning false if we reach the end or the rune counts are incorrect
 		for {
 			i++
 			if i == len(word2.SortedRuneCounts) {
@@ -45,6 +49,14 @@ func isWord1AnagramOfWord2(word1 *dictionary_tree.WordDetails, word2 *dictionary
 	return true
 }
 
+/**
+Recursively searches the trie for any words that can be spelt using the given set of letter
+
+Works by taking the trie head and set of letters and trying to walk the trie using that set.
+However we iterate the letters each time to allow us to search and find words that are anagrams
+i.e. then (e,h,n,t) can spell hen (e,h,n) and net (e,n,t). By iterating AND recursing we check all branches of the trie
+that could contain anagrams.
+ */
 func searchSet(letters []dictionary_tree.RuneCount, start int, head *dictionary_tree.Node, currentWord *dictionary_tree.WordDetails, anagramsCount *int) {
 	if len(head.Words) > 0 {
 		for i := 0; i < len(head.Words); i++ {
@@ -61,6 +73,9 @@ func searchSet(letters []dictionary_tree.RuneCount, start int, head *dictionary_
 	}
 }
 
+/**
+Takes words off a channel and finds all the anagrams for that word
+ */
 func findAnagrams(trie dictionary_tree.Node, wordChan <-chan dictionary_tree.WordDetails, anagramsForWord chan<- wordAnagramsPair) {
 	for {
 		currentWord, ok := <-wordChan
@@ -76,6 +91,10 @@ func findAnagrams(trie dictionary_tree.Node, wordChan <-chan dictionary_tree.Wor
 	}
 }
 
+/**
+Takes a channel of word/anagrams pair and tracks which word has the most anagrams
+also prints run stats continuously
+ */
 func trackMostAnagrams(finished chan<- bool, numWords int, anagramsForWord <-chan wordAnagramsPair) {
 	maxAnagramCount := 0
 	maxWord := ""

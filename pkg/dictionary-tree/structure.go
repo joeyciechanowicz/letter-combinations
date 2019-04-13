@@ -34,9 +34,8 @@ func newWordDetails(word string) WordDetails {
 		[]RuneCount{},
 	}
 
-	// store an array of {rune, count} which replaces the SortedSet and LetterCounts
-	// to check now, will need to iterate the slice on one word and allow skipping on the other
-
+	// Construct a set of letter and their associated counts
+	// afterwards we finish constructing our rune-count array
 	sortedLetters := []rune(word)
 	sort.Sort(runeSlice(sortedLetters))
 
