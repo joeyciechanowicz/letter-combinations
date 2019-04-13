@@ -137,14 +137,15 @@ func findWordWithMostAnagrams(trie dictionary_tree.Node, words []dictionary_tree
 	close(anagramsForWord)
 }
 
-//var cpuprofile = "cpu.prof"
-var cpuprofile = ""
+var cpuprofile = "cpu.prof"
+//var cpuprofile = ""
 
 //var memprofile = "mem.prof"
 var memprofile = ""
 
 func main() {
-	var trie, words = dictionary_tree.CreateDictionaryTree("./words_alpha.txt")
+	//var trie, words = dictionary_tree.CreateDictionaryTree("./words_alpha.txt")
+	var trie, words = dictionary_tree.CreateDictionaryTree("./words_no-names-or-places.txt")
 	//var trie, words = dictionary_tree.CreateDictionaryTree("./first_2000_words.txt")
 
 	flag.Parse()
