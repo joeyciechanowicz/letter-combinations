@@ -3,20 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/joeyciechanowicz/letter-combinations/pkg/dictionary-tree"
+	"github.com/joeyciechanowicz/letter-combinations/pkg/stats"
 	"log"
-	"math"
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"time"
-
-	"github.com/joeyciechanowicz/letter-combinations/pkg/dictionary-tree"
 )
 
 type wordAnagramsPair struct {
 	word          string
 	anagramsCount int
 }
+
+/**
+TODO:
+
+Change from iterating all words to traversing the trie, and only checking nodes with no children (leafs)
+As any node that has children, must by definition be an anagram of those children.
+
+Easy to do in current code base by changing the for loop in the main function. Rest of the code works the same
+We just reduce the number of words we have to check significantly
+ */
 
 func isWord1AnagramOfWord2(word1 *dictionary_tree.WordDetails, word2 *dictionary_tree.WordDetails) bool {
 	if len(word1.Word) > len(word2.Word) {
@@ -76,85 +84,82 @@ func searchSet(letters []dictionary_tree.RuneCount, start int, head *dictionary_
 /**
 Takes words off a channel and finds all the anagrams for that word
  */
-func findAnagrams(trie dictionary_tree.Node, wordChan <-chan dictionary_tree.WordDetails, anagramsForWord chan<- wordAnagramsPair) {
+func findAnagrams(trie *dictionary_tree.Node, wordChan <-chan dictionary_tree.WordDetails, rateIncrements chan<- bool, maxAnagram chan<- wordAnagramsPair) {
+	var maxAnagramCount int
+	var maxWord string
+
 	for {
 		currentWord, ok := <-wordChan
 		if !ok {
+			maxAnagram <- wordAnagramsPair{maxWord, maxAnagramCount}
 			return
 		}
 
 		anagramsCount := 0
-		searchSet(currentWord.SortedRuneCounts, 0, &trie, &currentWord, &anagramsCount)
+		searchSet(currentWord.SortedRuneCounts, 0, trie, &currentWord, &anagramsCount)
 		pair := wordAnagramsPair{currentWord.Word, anagramsCount}
-
-		anagramsForWord <- pair
-	}
-}
-
-/**
-Takes a channel of word/anagrams pair and tracks which word has the most anagrams
-also prints run stats continuously
- */
-func trackMostAnagrams(finished chan<- bool, numWords int, anagramsForWord <-chan wordAnagramsPair) {
-	maxAnagramCount := 0
-	maxWord := ""
-
-	start := time.Now()
-	ticks := 0
-	total := float64(numWords)
-
-	for {
-		pair := <-anagramsForWord
 
 		if pair.anagramsCount > maxAnagramCount {
 			maxWord = pair.word
 			maxAnagramCount = pair.anagramsCount
 		}
 
-		ticks += 1
+		rateIncrements <- true
+	}
+}
 
-		if ticks%500 == 0 {
-			curr := float64(ticks)
-			ratio := math.Min(math.Max(curr/total, 0), 1)
-			percent := int32(math.Floor(ratio * 100))
-			elapsed := float64(time.Since(start).Seconds())
-			rate := curr / elapsed
-
-			fmt.Printf("\r%d%% %d/wps", percent, int32(rate))
+func walkTrie(node *dictionary_tree.Node, wordChan chan<- dictionary_tree.WordDetails) {
+	if len(node.Children) == 0 {
+		for _, word := range node.Words {
+			wordChan <- *word
 		}
-
-		if ticks == numWords {
-			fmt.Printf("\n\nLongest word: %s with %d imperfect-anagrams\n", maxWord, maxAnagramCount)
-			finished <- true
-			return
+	} else {
+		for _, childNode := range node.Children {
+			walkTrie(childNode, wordChan)
 		}
 	}
 }
+
 
 func findWordWithMostAnagrams(trie dictionary_tree.Node, words []dictionary_tree.WordDetails) {
 	const numCpus = 8
 
 	finished := make(chan bool)
-	anagramsForWord := make(chan wordAnagramsPair, numCpus)
+	maxAnagrams := make(chan wordAnagramsPair)
 	wordChan := make(chan dictionary_tree.WordDetails, numCpus)
+	statUpdates := make(chan bool, numCpus)
 
-	go trackMostAnagrams(finished, len(words), anagramsForWord)
+	go stats.PrintRate(finished, statUpdates)
 
 	for i := 0; i < numCpus; i++ {
-		go findAnagrams(trie, wordChan, anagramsForWord)
+		go findAnagrams(&trie, wordChan, statUpdates, maxAnagrams)
 	}
 
 	go func() {
-		for i := 0; i < len(words); i++ {
-			wordChan <- words[i]
-		}
+		walkTrie(&trie, wordChan)
 
 		close(wordChan)
 	}()
 
-	<-finished
+	var maxAnagramCount int
+	var maxWord string
+	for i := 0; i < numCpus; i++ {
+		select {
+			case pair := <- maxAnagrams:
+				if pair.anagramsCount > maxAnagramCount {
+					maxWord = pair.word
+					maxAnagramCount = pair.anagramsCount
+				}
+		}
+	}
 
-	close(anagramsForWord)
+	finished <- true
+
+	close(finished)
+	close(maxAnagrams)
+	close(statUpdates)
+
+	fmt.Printf("\n\nLongest word: %s with %d imperfect-anagrams\n", maxWord, maxAnagramCount)
 }
 
 var cpuprofile = "cpu.prof"
