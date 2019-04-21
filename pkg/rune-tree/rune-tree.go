@@ -1,4 +1,4 @@
-package dictionary_tree
+package rune_tree
 
 import (
 	"github.com/joeyciechanowicz/letter-combinations/pkg/reader"
@@ -28,7 +28,7 @@ func (p runeSlice) Len() int           { return len(p) }
 func (p runeSlice) Less(i, j int) bool { return p[i] < p[j] }
 func (p runeSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
-func newWordDetails(word string) WordDetails {
+func NewWordDetails(word string) WordDetails {
 	var details = WordDetails{
 		word,
 		[]RuneCount{},
@@ -58,8 +58,7 @@ func newWordDetails(word string) WordDetails {
 	return details
 }
 
-
-func CreateDictionaryTree(filename string) (Node, []WordDetails){
+func CreateRuneDictionaryTree(filename string) (Node, []WordDetails){
 	nodeCount := 0
 
 	var words []WordDetails
@@ -70,7 +69,7 @@ func CreateDictionaryTree(filename string) (Node, []WordDetails){
 
 	reader.ReadFile(filename, func(word string) {
 		var details WordDetails
-		details = newWordDetails(word)
+		details = NewWordDetails(word)
 
 		var head *Node
 		head = &trie

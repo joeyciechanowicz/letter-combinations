@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/joeyciechanowicz/letter-combinations/pkg/dictionary-tree"
+	"github.com/joeyciechanowicz/letter-combinations/pkg/rune-tree"
 	"github.com/joeyciechanowicz/letter-combinations/pkg/stats"
 	"log"
 	"os"
@@ -16,17 +16,7 @@ type wordAnagramsPair struct {
 	anagramsCount int
 }
 
-/**
-TODO:
-
-Change from iterating all words to traversing the trie, and only checking nodes with no children (leafs)
-As any node that has children, must by definition be an anagram of those children.
-
-Easy to do in current code base by changing the for loop in the main function. Rest of the code works the same
-We just reduce the number of words we have to check significantly
- */
-
-func isWord1AnagramOfWord2(word1 *dictionary_tree.WordDetails, word2 *dictionary_tree.WordDetails) bool {
+func isWord1AnagramOfWord2(word1 *rune_tree.WordDetails, word2 *rune_tree.WordDetails) bool {
 	if len(word1.Word) > len(word2.Word) {
 		return false
 	}
@@ -65,7 +55,7 @@ However we iterate the letters each time to allow us to search and find words th
 i.e. then (e,h,n,t) can spell hen (e,h,n) and net (e,n,t). By iterating AND recursing we check all branches of the trie
 that could contain anagrams.
  */
-func searchSet(letters []dictionary_tree.RuneCount, start int, head *dictionary_tree.Node, currentWord *dictionary_tree.WordDetails, anagramsCount *int) {
+func searchSet(letters []rune_tree.RuneCount, start int, head *rune_tree.Node, currentWord *rune_tree.WordDetails, anagramsCount *int) {
 	if len(head.Words) > 0 {
 		for i := 0; i < len(head.Words); i++ {
 			if isWord1AnagramOfWord2(head.Words[i], currentWord) {
@@ -84,7 +74,7 @@ func searchSet(letters []dictionary_tree.RuneCount, start int, head *dictionary_
 /**
 Takes words off a channel and finds all the anagrams for that word
  */
-func findAnagrams(trie *dictionary_tree.Node, wordChan <-chan dictionary_tree.WordDetails, rateIncrements chan<- bool, maxAnagram chan<- wordAnagramsPair) {
+func findAnagrams(trie *rune_tree.Node, wordChan <-chan rune_tree.WordDetails, rateIncrements chan<- bool, maxAnagram chan<- wordAnagramsPair) {
 	var maxAnagramCount int
 	var maxWord string
 
@@ -97,18 +87,17 @@ func findAnagrams(trie *dictionary_tree.Node, wordChan <-chan dictionary_tree.Wo
 
 		anagramsCount := 0
 		searchSet(currentWord.SortedRuneCounts, 0, trie, &currentWord, &anagramsCount)
-		pair := wordAnagramsPair{currentWord.Word, anagramsCount}
 
-		if pair.anagramsCount > maxAnagramCount {
-			maxWord = pair.word
-			maxAnagramCount = pair.anagramsCount
+		if anagramsCount > maxAnagramCount {
+			maxWord = currentWord.Word
+			maxAnagramCount = anagramsCount
 		}
 
 		rateIncrements <- true
 	}
 }
 
-func walkTrie(node *dictionary_tree.Node, wordChan chan<- dictionary_tree.WordDetails) {
+func walkTrie(node *rune_tree.Node, wordChan chan<- rune_tree.WordDetails) {
 	if len(node.Children) == 0 {
 		for _, word := range node.Words {
 			wordChan <- *word
@@ -121,12 +110,12 @@ func walkTrie(node *dictionary_tree.Node, wordChan chan<- dictionary_tree.WordDe
 }
 
 
-func findWordWithMostAnagrams(trie dictionary_tree.Node, words []dictionary_tree.WordDetails) {
+func findWordWithMostAnagrams(trie rune_tree.Node, words []rune_tree.WordDetails) {
 	const numCpus = 8
 
 	finished := make(chan bool)
 	maxAnagrams := make(chan wordAnagramsPair)
-	wordChan := make(chan dictionary_tree.WordDetails, numCpus)
+	wordChan := make(chan rune_tree.WordDetails, numCpus)
 	statUpdates := make(chan bool, numCpus)
 
 	go stats.PrintRate(finished, statUpdates)
@@ -169,9 +158,9 @@ var cpuprofile = "cpu.prof"
 var memprofile = ""
 
 func main() {
-	//var trie, words = dictionary_tree.CreateDictionaryTree("./words_alpha.txt")
-	var trie, words = dictionary_tree.CreateDictionaryTree("./words_no-names-or-places.txt")
-	//var trie, words = dictionary_tree.CreateDictionaryTree("./first_2000_words.txt")
+	//var trie, words = dictionary_tree.CreateRuneDictionaryTree("./words_alpha.txt")
+	var trie, words = rune_tree.CreateRuneDictionaryTree("./words_no-names-or-places.txt")
+	//var trie, words = dictionary_tree.CreateRuneDictionaryTree("./first_2000_words.txt")
 
 	flag.Parse()
 	if cpuprofile != "" {
