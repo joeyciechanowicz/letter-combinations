@@ -10,13 +10,10 @@ import (
 	"time"
 )
 
-const filename = "./words_alpha.txt"
+const filename = "./first_1000-3-to-9-letter-words.txt"
+//const filename = "./3-to-9-letter-words.txt"
 
 func shouldWordBeIncluded(word string, mainLetter string, letterCounts map[string]int) bool {
-	if len(word) < 3 {
-		return false
-	}
-
 	lettersSeen := make(map[string]int)
 
 	for _, letter := range strings.Split(word, "") {
@@ -66,12 +63,12 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 	fmt.Printf("┏━━━━━━━━━━━┓\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[0], letters[1], letters[2])
 	fmt.Printf("┃   ┏━━━┓   ┃\n")
-	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d reader in %dms\n", letters[3], mainLetter, letters[4], len(words), time.Nanoseconds() / 1e6)
+	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d words in %dms\n", letters[3], mainLetter, letters[4], len(words), time.Nanoseconds() / 1e6)
 	fmt.Printf("┃   ┗━━━┛   ┃\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[5], letters[6], letters[7])
 	fmt.Printf("┗━━━━━━━━━━━┛\n")
 
-	nineLetterString := "Nine letter reader: "
+	nineLetterString := "Nine letter words: "
 	nineLetterCount := 0
 	for _, word := range words {
 		if len(word) == 9 {
@@ -86,7 +83,7 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 		fmt.Println(nineLetterString)
 	}
 
-	eightLetterString := "Eight letter reader: "
+	eightLetterString := "Eight letter words: "
 	eightLetterCount := 0
 	for _, word := range words {
 		if len(word) == 8 {
@@ -100,6 +97,8 @@ func printOutput(mainLetter string, letterCounts map[string]int, words []string,
 	if eightLetterCount > 0 {
 		fmt.Println(eightLetterString)
 	}
+
+	fmt.Print("Words: ")
 
 	for i, word := range words {
 		fmt.Print(word)

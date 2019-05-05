@@ -99,8 +99,6 @@ func NewWordDetails(word string) WordDetails {
 		[]LetterCount{},
 	}
 
-	// Construct a set of letter and their associated counts
-	// afterwards we finish constructing our rune-count array
 	sortedLetters := []rune(word)
 	sort.Sort(runeSlice(sortedLetters))
 

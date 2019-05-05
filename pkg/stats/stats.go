@@ -21,12 +21,9 @@ func PrintRate(finished <-chan bool, increment <-chan bool) {
 
 			if ticks%500 == 0 {
 				curr := float64(ticks)
-				//ratio := math.Min(math.Max(curr/total, 0), 1)
-				//percent := int32(math.Floor(ratio * 100))
 				elapsed := float64(time.Since(start).Seconds())
 				rate := curr / elapsed
 
-				//fmt.Printf("\r%d%% %d/wps", percent, int32(rate))
 				fmt.Printf("\r%d/wps", int32(rate))
 			}
 
@@ -50,13 +47,15 @@ func PrintProgress(finished <-chan bool, increment <-chan bool, maxTicks int) {
 			ticks += 1
 
 			if ticks%500 == 0 {
+
 				curr := float64(ticks)
 				ratio := math.Min(math.Max(curr/total, 0), 1)
 				percent := int32(math.Floor(ratio * 100))
 				elapsed := float64(time.Since(start).Seconds())
+				eta := elapsed * (total / curr - 1)
 				rate := curr / elapsed
 
-				fmt.Printf("\r%d%% %d/wps", percent, int32(rate))
+				fmt.Printf("\r %d%% %d/wps. %f seconds remaining", percent, int32(rate), eta)
 			}
 
 		case <-finished:
