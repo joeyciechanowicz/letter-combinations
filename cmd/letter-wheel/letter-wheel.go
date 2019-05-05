@@ -13,9 +13,9 @@ import (
 const WHEEL_SIZE = 9
 const TOTAL_WHEELS = 52451256
 
-type wheelSolutions struct {
-	wheel     Wheel
-	wordCount int
+type wheelSolution struct {
+	wheel Wheel
+	words []string
 }
 
 type Wheel struct {
@@ -57,18 +57,18 @@ func canWordBeSpeltFromWheel(word []int_tree.LetterCount, wheel Wheel) bool {
 	return seenMainLetter
 }
 
-func findWordsForWheel(set []int, head *int_tree.Node, start int, currentWheel Wheel, wordCount *int) {
+func findWordsForWheel(head *int_tree.Node, start int, currentWheel Wheel, wheelWords *[]string) {
 	if len(head.Words) > 0 {
 		for i := 0; i < len(head.Words); i++ {
 			if canWordBeSpeltFromWheel(head.Words[i].SortedLetterCounts, currentWheel) {
-				*wordCount += 1
+				*wheelWords = append(*wheelWords, head.Words[i].Word)
 			}
 		}
 	}
 
-	for i := start; i < len(set); i++ {
-		if _, ok := head.Children[set[i]]; ok {
-			findWordsForWheel(set, head.Children[set[i]], i+1, currentWheel, wordCount)
+	for i := start; i < len(currentWheel.LetterCounts); i++ {
+		if _, ok := head.Children[currentWheel.LetterCounts[i].Letter]; ok {
+			findWordsForWheel(head.Children[currentWheel.LetterCounts[i].Letter], i+1, currentWheel, wheelWords)
 		}
 	}
 }
@@ -87,14 +87,13 @@ func countLetters(wheel [WHEEL_SIZE - 1]int) [26]byte {
 /**
 Takes the 8 surrounding wheel runes off a channel, iterates the centre 26 letters and finds the word-count for each wheel
  */
-func findWords(trie *int_tree.Node, wheelChan <-chan [WHEEL_SIZE - 1]int, stats chan<- bool, maxWheelChan chan<- wheelSolutions) {
-	var maxWordCount int
-	var maxWheel Wheel
+func findWords(trie *int_tree.Node, wheelChan <-chan [WHEEL_SIZE - 1]int, stats chan<- bool, maxWheelChan chan<- wheelSolution) {
+	var maxSolution wheelSolution
 
 	for {
 		currentWheel, ok := <-wheelChan
 		if !ok {
-			maxWheelChan <- wheelSolutions{maxWheel, maxWordCount}
+			maxWheelChan <- maxSolution
 			return
 		}
 
@@ -114,13 +113,12 @@ func findWords(trie *int_tree.Node, wheelChan <-chan [WHEEL_SIZE - 1]int, stats 
 				}
 			}
 
-			wordCount := 0
+			var wheelWords []string
 			wheel := Wheel{mainLetter, compressedLetterCounts}
-			findWordsForWheel(currentWheel[:], trie, 0, wheel, &wordCount)
+			findWordsForWheel(trie, 0, wheel, &wheelWords)
 
-			if wordCount > maxWordCount {
-				maxWheel = wheel
-				maxWordCount = wordCount
+			if len(wheelWords) > len(maxSolution.words) {
+				maxSolution = wheelSolution{wheel, wheelWords}
 			}
 
 			letterCounts[mainLetter]--
@@ -156,11 +154,13 @@ func combinationRepetition(wheelChan chan [WHEEL_SIZE - 1]int) {
 	}
 }
 
-func printOutput(wheel Wheel, numFound int) {
+func printOutput(solution wheelSolution) {
+	wheel := solution.wheel
+
 	var letters []string
 	for _, letterCounts := range wheel.LetterCounts {
 		if letterCounts.Letter == wheel.MainLetter {
-			for j := 0; j < int(letterCounts.Count - 1); j++ {
+			for j := 0; j < int(letterCounts.Count-1); j++ {
 				letters = append(letters, string(int_tree.Alphabet[letterCounts.Letter]))
 			}
 		} else {
@@ -173,17 +173,22 @@ func printOutput(wheel Wheel, numFound int) {
 	fmt.Printf("\n┏━━━━━━━━━━━┓\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[0], letters[1], letters[2])
 	fmt.Printf("┃   ┏━━━┓   ┃\n")
-	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d\n", letters[7], string(int_tree.Alphabet[wheel.MainLetter]), letters[3], numFound)
+	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d\n", letters[7], string(int_tree.Alphabet[wheel.MainLetter]), letters[3], len(solution.words))
 	fmt.Printf("┃   ┗━━━┛   ┃\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[6], letters[5], letters[4])
 	fmt.Printf("┗━━━━━━━━━━━┛\n")
+
+	for _, word := range (solution.words) {
+		fmt.Printf("%s, ", word)
+	}
+	fmt.Println()
 }
 
-func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) (Wheel, int) {
+func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) wheelSolution {
 	const NUM_CPUS = 8
 
 	finished := make(chan bool)
-	maxWheelChan := make(chan wheelSolutions)
+	maxWheelChan := make(chan wheelSolution)
 	outerWheelChan := make(chan [WHEEL_SIZE - 1]int, NUM_CPUS)
 	statUpdates := make(chan bool, NUM_CPUS)
 
@@ -198,14 +203,13 @@ func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) (Wh
 		close(outerWheelChan)
 	}()
 
-	var maxWheel Wheel
-	var maxWordCount int
+	var maxSolution wheelSolution
+
 	for i := 0; i < NUM_CPUS; i++ {
 		select {
-		case pair := <-maxWheelChan:
-			if pair.wordCount > maxWordCount {
-				maxWheel = pair.wheel
-				maxWordCount = pair.wordCount
+		case solution := <-maxWheelChan:
+			if len(solution.words) > len(maxSolution.words) {
+				maxSolution = solution
 			}
 		}
 	}
@@ -216,10 +220,10 @@ func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) (Wh
 	close(maxWheelChan)
 	close(statUpdates)
 
-	return maxWheel, maxWordCount
+	return maxSolution
 }
 
-func findWordsForWheelClarification(wheel Wheel, words []int_tree.WordDetails) int{
+func findWordsForWheelClarification(wheel Wheel, words []int_tree.WordDetails) int {
 	count := 0
 
 	for _, word := range words {
@@ -231,7 +235,7 @@ func findWordsForWheelClarification(wheel Wheel, words []int_tree.WordDetails) i
 	return count
 }
 
-var testMode = true
+var testMode = false
 
 func main() {
 	var trie int_tree.Node
@@ -243,10 +247,10 @@ func main() {
 		trie, words = int_tree.CreateIntDictionaryTree("./3-to-9-letter-words.txt")
 	}
 
-	wheel, wordCount := findBestLetterWheel(trie, words)
-	clarificationWordCount := findWordsForWheelClarification(wheel, words)
+	solution := findBestLetterWheel(trie, words)
+	clarificationWordCount := findWordsForWheelClarification(solution.wheel, words)
 
-	printOutput(wheel, wordCount)
+	printOutput(solution)
 	fmt.Printf("Clarification count found %d words\n", clarificationWordCount)
 
 	func(cpuProfile string) {
