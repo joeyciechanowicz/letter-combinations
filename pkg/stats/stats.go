@@ -59,6 +59,7 @@ func PrintProgress(finished <-chan bool, increment <-chan bool, maxTicks int) {
 			}
 
 		case <-finished:
+			fmt.Printf("Receved %d items in %s", ticks, time.Since(start))
 			return
 		}
 	}

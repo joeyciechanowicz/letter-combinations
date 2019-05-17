@@ -64,3 +64,4 @@ anagrams.txt
 letter-combinations
 src/github.com
 *.prof
+*.out

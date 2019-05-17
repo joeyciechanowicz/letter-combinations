@@ -5,70 +5,70 @@ import (
 	"sort"
 )
 
-func toAlphabetIndex(letter rune) int {
-	return int(letter) - int(toRune("a"))
+func ToAlphabetIndex(letter rune) int {
+	return int(letter) - int(ToRune("a"))
 }
 
-func toRune(letter string) rune {
+func ToRune(letter string) rune {
 	return []rune(letter)[0]
 }
 
 var RuneToLetters = map[rune]int {
-	toRune("a"): toAlphabetIndex(toRune("a")),
-	toRune("b"): toAlphabetIndex(toRune("b")),
-	toRune("c"): toAlphabetIndex(toRune("c")),
-	toRune("d"): toAlphabetIndex(toRune("d")),
-	toRune("e"): toAlphabetIndex(toRune("e")),
-	toRune("f"): toAlphabetIndex(toRune("f")),
-	toRune("g"): toAlphabetIndex(toRune("g")),
-	toRune("h"): toAlphabetIndex(toRune("h")),
-	toRune("i"): toAlphabetIndex(toRune("i")),
-	toRune("j"): toAlphabetIndex(toRune("j")),
-	toRune("k"): toAlphabetIndex(toRune("k")),
-	toRune("l"): toAlphabetIndex(toRune("l")),
-	toRune("m"): toAlphabetIndex(toRune("m")),
-	toRune("n"): toAlphabetIndex(toRune("n")),
-	toRune("o"): toAlphabetIndex(toRune("o")),
-	toRune("p"): toAlphabetIndex(toRune("p")),
-	toRune("q"): toAlphabetIndex(toRune("q")),
-	toRune("r"): toAlphabetIndex(toRune("r")),
-	toRune("s"): toAlphabetIndex(toRune("s")),
-	toRune("t"): toAlphabetIndex(toRune("t")),
-	toRune("u"): toAlphabetIndex(toRune("u")),
-	toRune("v"): toAlphabetIndex(toRune("v")),
-	toRune("w"): toAlphabetIndex(toRune("w")),
-	toRune("x"): toAlphabetIndex(toRune("x")),
-	toRune("y"): toAlphabetIndex(toRune("y")),
-	toRune("z"): toAlphabetIndex(toRune("z")),
+	ToRune("a"): ToAlphabetIndex(ToRune("a")),
+	ToRune("b"): ToAlphabetIndex(ToRune("b")),
+	ToRune("c"): ToAlphabetIndex(ToRune("c")),
+	ToRune("d"): ToAlphabetIndex(ToRune("d")),
+	ToRune("e"): ToAlphabetIndex(ToRune("e")),
+	ToRune("f"): ToAlphabetIndex(ToRune("f")),
+	ToRune("g"): ToAlphabetIndex(ToRune("g")),
+	ToRune("h"): ToAlphabetIndex(ToRune("h")),
+	ToRune("i"): ToAlphabetIndex(ToRune("i")),
+	ToRune("j"): ToAlphabetIndex(ToRune("j")),
+	ToRune("k"): ToAlphabetIndex(ToRune("k")),
+	ToRune("l"): ToAlphabetIndex(ToRune("l")),
+	ToRune("m"): ToAlphabetIndex(ToRune("m")),
+	ToRune("n"): ToAlphabetIndex(ToRune("n")),
+	ToRune("o"): ToAlphabetIndex(ToRune("o")),
+	ToRune("p"): ToAlphabetIndex(ToRune("p")),
+	ToRune("q"): ToAlphabetIndex(ToRune("q")),
+	ToRune("r"): ToAlphabetIndex(ToRune("r")),
+	ToRune("s"): ToAlphabetIndex(ToRune("s")),
+	ToRune("t"): ToAlphabetIndex(ToRune("t")),
+	ToRune("u"): ToAlphabetIndex(ToRune("u")),
+	ToRune("v"): ToAlphabetIndex(ToRune("v")),
+	ToRune("w"): ToAlphabetIndex(ToRune("w")),
+	ToRune("x"): ToAlphabetIndex(ToRune("x")),
+	ToRune("y"): ToAlphabetIndex(ToRune("y")),
+	ToRune("z"): ToAlphabetIndex(ToRune("z")),
 }
 
 var Alphabet = [26]rune {
-	toRune("a"),
-	toRune("b"),
-	toRune("c"),
-	toRune("d"),
-	toRune("e"),
-	toRune("f"),
-	toRune("g"),
-	toRune("h"),
-	toRune("i"),
-	toRune("j"),
-	toRune("k"),
-	toRune("l"),
-	toRune("m"),
-	toRune("n"),
-	toRune("o"),
-	toRune("p"),
-	toRune("q"),
-	toRune("r"),
-	toRune("s"),
-	toRune("t"),
-	toRune("u"),
-	toRune("v"),
-	toRune("w"),
-	toRune("x"),
-	toRune("y"),
-	toRune("z"),
+	ToRune("a"),
+	ToRune("b"),
+	ToRune("c"),
+	ToRune("d"),
+	ToRune("e"),
+	ToRune("f"),
+	ToRune("g"),
+	ToRune("h"),
+	ToRune("i"),
+	ToRune("j"),
+	ToRune("k"),
+	ToRune("l"),
+	ToRune("m"),
+	ToRune("n"),
+	ToRune("o"),
+	ToRune("p"),
+	ToRune("q"),
+	ToRune("r"),
+	ToRune("s"),
+	ToRune("t"),
+	ToRune("u"),
+	ToRune("v"),
+	ToRune("w"),
+	ToRune("x"),
+	ToRune("y"),
+	ToRune("z"),
 }
 
 type LetterCount struct {
@@ -104,10 +104,10 @@ func NewWordDetails(word string) WordDetails {
 
 	letterCounts := make(map[int]byte)
 
-	details.SortedLetterCounts = append(details.SortedLetterCounts, LetterCount{toAlphabetIndex(sortedLetters[0]), 0})
+	details.SortedLetterCounts = append(details.SortedLetterCounts, LetterCount{ToAlphabetIndex(sortedLetters[0]), 0})
 
 	for _, char := range sortedLetters {
-		alphaIndex := toAlphabetIndex(char)
+		alphaIndex := ToAlphabetIndex(char)
 		letterCounts[alphaIndex] += 1
 
 		if details.SortedLetterCounts[len(details.SortedLetterCounts)-1].Letter != alphaIndex {

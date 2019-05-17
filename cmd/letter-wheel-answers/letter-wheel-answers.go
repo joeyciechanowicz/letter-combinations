@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-const filename = "./first_1000-3-to-9-letter-words.txt"
-//const filename = "./3-to-9-letter-words.txt"
+//const filename = "./first_1000-3-to-9-letter-words.txt"
+const filename = "./3-to-9-letter-words.txt"
 
 func shouldWordBeIncluded(word string, mainLetter string, letterCounts map[string]int) bool {
 	lettersSeen := make(map[string]int)

@@ -13,9 +13,9 @@ import (
 const WHEEL_SIZE = 9
 const TOTAL_WHEELS = 52451256
 
-type wheelSolution struct {
+type wordCountForWheel struct {
 	wheel Wheel
-	words []string
+	wordsCount int
 }
 
 type Wheel struct {
@@ -57,18 +57,18 @@ func canWordBeSpeltFromWheel(word []int_tree.LetterCount, wheel Wheel) bool {
 	return seenMainLetter
 }
 
-func findWordsForWheel(head *int_tree.Node, start int, currentWheel Wheel, wheelWords *[]string) {
+func findWordsForWheel(head *int_tree.Node, start int, currentWheel Wheel, wheelCount *int) {
 	if len(head.Words) > 0 {
 		for i := 0; i < len(head.Words); i++ {
 			if canWordBeSpeltFromWheel(head.Words[i].SortedLetterCounts, currentWheel) {
-				*wheelWords = append(*wheelWords, head.Words[i].Word)
+				*wheelCount++
 			}
 		}
 	}
 
 	for i := start; i < len(currentWheel.LetterCounts); i++ {
 		if _, ok := head.Children[currentWheel.LetterCounts[i].Letter]; ok {
-			findWordsForWheel(head.Children[currentWheel.LetterCounts[i].Letter], i+1, currentWheel, wheelWords)
+			findWordsForWheel(head.Children[currentWheel.LetterCounts[i].Letter], i+1, currentWheel, wheelCount)
 		}
 	}
 }
@@ -87,13 +87,15 @@ func countLetters(wheel [WHEEL_SIZE - 1]int) [26]byte {
 /**
 Takes the 8 surrounding wheel runes off a channel, iterates the centre 26 letters and finds the word-count for each wheel
  */
-func findWords(trie *int_tree.Node, wheelChan <-chan [WHEEL_SIZE - 1]int, stats chan<- bool, maxWheelChan chan<- wheelSolution) {
-	var maxSolution wheelSolution
+func findWords(trie *int_tree.Node, wheelChan <-chan [WHEEL_SIZE - 1]int, stats chan<- bool, maxWheelChan chan<- wordCountForWheel) {
+	var maxCount int
+	var maxWheel Wheel
 
 	for {
 		currentWheel, ok := <-wheelChan
+
 		if !ok {
-			maxWheelChan <- maxSolution
+			maxWheelChan <- wordCountForWheel{wheel:maxWheel, wordsCount:maxCount}
 			return
 		}
 
@@ -113,12 +115,13 @@ func findWords(trie *int_tree.Node, wheelChan <-chan [WHEEL_SIZE - 1]int, stats 
 				}
 			}
 
-			var wheelWords []string
+			wheelCount := 0
 			wheel := Wheel{mainLetter, compressedLetterCounts}
-			findWordsForWheel(trie, 0, wheel, &wheelWords)
+			findWordsForWheel(trie, 0, wheel, &wheelCount)
 
-			if len(wheelWords) > len(maxSolution.words) {
-				maxSolution = wheelSolution{wheel, wheelWords}
+			if wheelCount > maxCount {
+				maxCount = wheelCount
+				maxWheel = wheel
 			}
 
 			letterCounts[mainLetter]--
@@ -154,7 +157,7 @@ func combinationRepetition(wheelChan chan [WHEEL_SIZE - 1]int) {
 	}
 }
 
-func printOutput(solution wheelSolution) {
+func printOutput(solution wordCountForWheel) {
 	wheel := solution.wheel
 
 	var letters []string
@@ -173,22 +176,17 @@ func printOutput(solution wheelSolution) {
 	fmt.Printf("\n┏━━━━━━━━━━━┓\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[0], letters[1], letters[2])
 	fmt.Printf("┃   ┏━━━┓   ┃\n")
-	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d\n", letters[7], string(int_tree.Alphabet[wheel.MainLetter]), letters[3], len(solution.words))
+	fmt.Printf("┃ %s ┃ %s ┃ %s ┃  Found %d\n", letters[7], string(int_tree.Alphabet[wheel.MainLetter]), letters[3], solution.wordsCount)
 	fmt.Printf("┃   ┗━━━┛   ┃\n")
 	fmt.Printf("┃ %s   %s   %s ┃\n", letters[6], letters[5], letters[4])
 	fmt.Printf("┗━━━━━━━━━━━┛\n")
-
-	for _, word := range (solution.words) {
-		fmt.Printf("%s, ", word)
-	}
-	fmt.Println()
 }
 
-func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) wheelSolution {
+func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) wordCountForWheel {
 	const NUM_CPUS = 8
 
 	finished := make(chan bool)
-	maxWheelChan := make(chan wheelSolution)
+	maxWheelChan := make(chan wordCountForWheel)
 	outerWheelChan := make(chan [WHEEL_SIZE - 1]int, NUM_CPUS)
 	statUpdates := make(chan bool, NUM_CPUS)
 
@@ -203,12 +201,12 @@ func findBestLetterWheel(trie int_tree.Node, details []int_tree.WordDetails) whe
 		close(outerWheelChan)
 	}()
 
-	var maxSolution wheelSolution
+	var maxSolution wordCountForWheel
 
 	for i := 0; i < NUM_CPUS; i++ {
 		select {
 		case solution := <-maxWheelChan:
-			if len(solution.words) > len(maxSolution.words) {
+			if solution.wordsCount > maxSolution.wordsCount {
 				maxSolution = solution
 			}
 		}
